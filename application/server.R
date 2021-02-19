@@ -17,6 +17,7 @@ library(quanteda)
 library(syuzhet)
 library(reshape2)
 library(stm)
+library(rtweet)
 
 # Server Side -------------------------------------------------------------
 
