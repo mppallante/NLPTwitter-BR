@@ -29,7 +29,7 @@ ui = bs4DashPage(
     loading_duration = 5,
     loading_background = "#1C1C1C",
     # Nome do Dashboard
-    title = "NLP Twitter (Brasil)",
+    title = "Guia para Criar - NLP Twitter",
     # Menu Superior
     navbar = bs4DashNavbar(
         skin = 'light'
@@ -52,11 +52,6 @@ ui = bs4DashPage(
             # Sobre a aplicação
             bs4SidebarHeader("Informações"),
             bs4SidebarMenuItem(
-                tabName = "Projeto",
-                icon = "file-alt",
-                text = "Detalhes sobre o Projeto"
-            ),
-            bs4SidebarMenuItem(
                 tabName = "about",
                 icon = "info",
                 text = "Aplicação"
@@ -66,8 +61,8 @@ ui = bs4DashPage(
     # Footer
     footer = bs4DashFooter(
         copyrights = a(
-            href = "https://github.com/mppallante", 
-            target = "_blank", "© Matheus Pina Pallante. Todos os direitos reservados."
+            href = "https://www.guiaparacriar.com.br/", 
+            target = "_blank", "© Guia para Criar. Todos os direitos reservados."
         ),
         right_text = lubridate::year(Sys.time())
     ), 
@@ -133,27 +128,16 @@ ui = bs4DashPage(
                             echarts4rOutput(outputId = 'feeling', width = "100%", height = "100%"))
                 )
             ),
-            # Documentos sobre o Dashboard
-            bs4TabItem(
-                tabName = 'Projeto',
-                fluidPage(
-                    bs4Card(width = NULL, closable = F, maximizable = T, status = "primary",
-                            title = "Detalhes sobre o Projeto",
-                            tags$iframe(style='height:500px; width:100%; scrolling=yes',
-                                        src='https://github.com/mppallante')
-                    )
-                )
-            ),
             # Sobre
             bs4TabItem(
                 tabName = 'about',
                 fluidPage(
                     bs4Jumbotron(
-                        title = "NLP Twitter - Brasil",
-                        lead = "Desenvolvido para análise de feeds e perfis em redes sociais.",
+                        title = "Guia para Criar",
+                        lead = "Inteligência Analítica Para Todos!",
                         status = "primary",
-                        btn_name = 'NLP Twitter - Brasil',
-                        href = "https://github.com/mppallante"
+                        btn_name = 'Acessar -  GUIA PARA CRIAR',
+                        href = "https://www.guiaparacriar.com.br/"
                     )
                 )
             )
