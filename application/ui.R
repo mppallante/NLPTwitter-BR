@@ -1,23 +1,30 @@
 # Pacotes -----------------------------------------------------------------
 
 library(shiny)
+library(shinyWidgets)
+library(shinybusy)
 library(bs4Dash)
 library(jsonlite)
-library(data.table)
-library(tidyr)
-library(dplyr)
 library(plotly)
-library(echarts4r)
-library(shinyWidgets)
-library(formattable)
-library(readxl)
-library(shinybusy)
-library(stopwords)
-library(quanteda)
-library(syuzhet)
+library(dplyr)
 library(reshape2)
-library(stm)
+library(tm)
 library(rtweet)
+library(igraph)
+library(ggraph)
+library(ggplot2)
+library(networkD3)
+library(udpipe)
+library(quanteda)
+library(quanteda.textplots)
+library(quanteda.textstats)
+library(stm)
+library(BTM)
+library(textplot)
+library(concaveman)
+library(syuzhet)
+library(stopwords)
+library(echarts4r)
 
 # User Interface ----------------------------------------------------------
 
@@ -29,7 +36,7 @@ ui = bs4DashPage(
     loading_duration = 5,
     loading_background = "#1C1C1C",
     # Nome do Dashboard
-    title = "Guia para Criar - NLP Twitter",
+    title = "NLP Twitter - BRASIL",
     # Menu Superior
     navbar = bs4DashNavbar(
         skin = 'light'
@@ -61,8 +68,8 @@ ui = bs4DashPage(
     # Footer
     footer = bs4DashFooter(
         copyrights = a(
-            href = "https://www.guiaparacriar.com.br/", 
-            target = "_blank", "© Guia para Criar. Todos os direitos reservados."
+            href = "https://mppallante.wixsite.com/mppallante", 
+            target = "_blank", "©MPPallante. Todos os direitos reservados."
         ),
         right_text = lubridate::year(Sys.time())
     ), 
@@ -74,58 +81,65 @@ ui = bs4DashPage(
                 tabName = 'tweets_twitter',
                 fluidPage(
                     # Filtro
-                    bs4Card(title = 'Configuração', height = "auto", status = 'navy', 
+                    bs4Card(title = 'Filtro', height = "auto", status = 'navy', 
                             width = NULL, closable = F, maximizable = F, collapsible = F,
                             pickerInput(inputId = "tema", 
-                                        label = "Temas:", 
-                                        choices = c("Brasil","Bolsonaro","COVID-19", "São Paulo"), 
+                                        label = "Assuntos:", 
+                                        choices = c("Brasil","COVID-19","Bolsonaro","São Paulo"), 
                                         width = "100%", 
                                         inline = F)),
-                    # Gráficos
+                    # Nuvem de Palavras
                     bs4Card(title = 'Nuvem de Palavras', height = 400, status = 'primary',
                             width = NULL, closable = F, maximizable = T, collapsible = F,
-                            echarts4rOutput(outputId = "cloudTweet", width = "100%", height = "100%"))
+                            echarts4rOutput(outputId = "cloudTweet", width = "100%", height = "100%")),
+                    # Top 15 Ocorrências de Palavras
+                    bs4Card(title = 'Top 15 Ocorrências de Palavras', height = 400, status = 'primary',
+                            width = NULL, closable = F, maximizable = T, collapsible = F,
+                            echarts4rOutput(outputId = 'topPalavras', width = "100%", height = "100%"))
                 ),
-                # Palavras
                 fluidRow(
+                    # Modeagem de Tópicos
                     column(width = 6,
-                           bs4Card(title = 'TOP 25 Palavras', height = 400, status = 'primary',
+                           bs4Card(title = 'Modeagem de Tópicos', height = 400, status = 'primary',
                                    width = NULL, closable = F, maximizable = T, collapsible = F,
-                                   echarts4rOutput(outputId = 'topPalavras', width = "100%", height = "100%"))),
+                                   plotOutput(outputId = 'topics', width = "100%", height = "100%"))),
+                    # Rede de Palavras
                     column(width = 6,
-                           bs4Card(title = 'Análise de Redes - Palavras', height = 400, status = 'primary',
+                           bs4Card(title = 'Rede de Palavras', height = 400, status = 'primary',
                                    width = NULL, closable = F, maximizable = T, collapsible = F,
                                    plotOutput(outputId = "wordsNetwork", width = "100%", height = "100%")))
+                ),
+                fluidPage(
+                    # Análise de Sentimentos
+                    bs4Card(title = 'Análise de Sentimentos', height = 400, status = 'primary',
+                            width = NULL, closable = F, maximizable = T, collapsible = F,
+                            echarts4rOutput(outputId = 'feeling', width = "100%", height = "100%"))
                 ),
                 # Tags
                 fluidRow(
                     column(width = 6,
-                           bs4Card(title = 'TOP 25 Tags', height = 400, status = 'primary',
+                           # Top 15 Ocorrências de Palavras
+                           bs4Card(title = 'Top 15 Ocorrências sobre Tags', height = 400, status = 'warning',
                                    width = NULL, closable = F, maximizable = T, collapsible = F,
                                    echarts4rOutput(outputId = 'topTags', width = "100%", height = "100%"))),
                     column(width = 6,
-                           bs4Card(title = 'Análise de Redes - Tags', height = 400, status = 'primary',
+                           # Rede de Palavras sobre as Tags
+                           bs4Card(title = 'Rede de Palavras sobre as Tags', height = 400, status = 'warning',
                                    width = NULL, closable = F, maximizable = T, collapsible = F,
                                    plotOutput(outputId = "tagsNetwork", width = "100%", height = "100%")))
                 ),
                 # Menções
                 fluidRow(
                     column(width = 6,
-                           bs4Card(title = 'TOP 25 Menções', height = 400, status = 'primary',
+                           # Top 15 Ocorrências de Palavras
+                           bs4Card(title = 'Top 15 Ocorrências sobre Menções', height = 400, status = 'olive',
                                    width = NULL, closable = F, maximizable = T, collapsible = F,
                                    echarts4rOutput('topMenções', width = "100%", height = "100%"))),
                     column(width = 6,
-                           bs4Card(title = 'Análise de Redes - Menções', height = 400, status = 'primary',
+                           # Rede de Palavras sobre as Menções
+                           bs4Card(title = 'Rede de Palavras sobre as Menções', height = 400, status = 'olive',
                                    width = NULL, closable = F, maximizable = T, collapsible = F,
                                    plotOutput(outputId = "MençõesNetwork", width = "100%", height = "100%")))
-                ),
-                fluidPage(
-                    bs4Card(title = 'Análise de Tópicos', height = 400, status = 'primary',
-                            width = NULL, closable = F, maximizable = T, collapsible = F,
-                            plotOutput(outputId = 'topics', width = "100%", height = "100%")),
-                    bs4Card(title = 'Análise de Sentimentos', height = 400, status = 'primary',
-                            width = NULL, closable = F, maximizable = T, collapsible = F,
-                            echarts4rOutput(outputId = 'feeling', width = "100%", height = "100%"))
                 )
             ),
             # Sobre
@@ -133,11 +147,11 @@ ui = bs4DashPage(
                 tabName = 'about',
                 fluidPage(
                     bs4Jumbotron(
-                        title = "Guia para Criar",
-                        lead = "Inteligência Analítica Para Todos!",
+                        title = "NLP Twitter (BRASIL) - GITHUB",
+                        lead = "Desenvolvido para análise de textos do Twitter.",
                         status = "primary",
-                        btn_name = 'Acessar -  GUIA PARA CRIAR',
-                        href = "https://www.guiaparacriar.com.br/"
+                        btn_name = 'GITHUB',
+                        href = "https://github.com/mppallante/NLPTwitter-BR"
                     )
                 )
             )

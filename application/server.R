@@ -1,316 +1,243 @@
 # Pacotes -----------------------------------------------------------------
 
 library(shiny)
+library(shinyWidgets)
+library(shinybusy)
 library(bs4Dash)
 library(jsonlite)
-library(data.table)
-library(tidyr)
-library(dplyr)
 library(plotly)
-library(echarts4r)
-library(shinyWidgets)
-library(formattable)
-library(readxl)
-library(shinybusy)
-library(stopwords)
-library(quanteda)
-library(syuzhet)
+library(dplyr)
 library(reshape2)
-library(stm)
+library(tm)
 library(rtweet)
+library(igraph)
+library(ggraph)
+library(ggplot2)
+library(networkD3)
+library(udpipe)
+library(quanteda)
+library(quanteda.textplots)
+library(quanteda.textstats)
+library(stm)
+library(BTM)
+library(textplot)
+library(concaveman)
+library(syuzhet)
+library(stopwords)
+library(echarts4r)
 
 # Server Side -------------------------------------------------------------
 
 server <- function(input, output, session) {
-    # Base de Dados
-    # Tweets - Brasil
-    show_modal_spinner(spin = "semipolar", text = "Processando")
-    tweets_Brasil <- fromJSON("https://raw.githubusercontent.com/mppallante/NLPTwitter-BR/master/json/tweets_Brasil.json")
-    # Tweets - Brasil Covid-19
-    tweets_Covid19 <- fromJSON("https://raw.githubusercontent.com/mppallante/NLPTwitter-BR/master/json/tweets_Covid19.json")
-    # Tweets - Brasil Bolsonaro
-    tweets_Bolsonaro <- fromJSON("https://raw.githubusercontent.com/mppallante/NLPTwitter-BR/master/json/tweets_Bolsonaro.json")
-    # Tweets - Brasil São Paulo
-    tweets_SP <- fromJSON("https://raw.githubusercontent.com/mppallante/NLPTwitter-BR/master/json/tweets_SP.json")
     
-    # Gráficos
-    output$cloudTweet <- renderEcharts4r({
-        tweets <- switch(input$tema, 
-                         "Brasil"={
-                             tweets_Brasil
-                         },
-                         "Bolsonaro"={
-                             tweets_Bolsonaro    
-                         },
-                         "COVID-19"={
-                             tweets_Covid19    
-                         },
-                         "São Paulo"={
-                             tweets_SP    
-                         },
-                         {
-                             print('Erro Interno!')
-                         }
+    ##### Base de Dados #####
+    
+    # Dados do Twitter sobre o Brasil
+    show_modal_spinner(spin = "semipolar", text = "Dados")
+    tweets_Brasil <- fromJSON("https://raw.githubusercontent.com/mppallante/NLPTwitter-BR/master/json/tweets_Brasil.json")
+    # Dados do Twitter sobre a Covid-19 no Brasil
+    tweets_Covid19 <- fromJSON("https://raw.githubusercontent.com/mppallante/NLPTwitter-BR/master/json/tweets_Covid19.json")
+    # Dados do Twitter sobre o Bolsonaro
+    tweets_Bolsonaro <- fromJSON("https://raw.githubusercontent.com/mppallante/NLPTwitter-BR/master/json/tweets_Bolsonaro.json")
+    # Dados do Twitter sobre o Estado de São Paulo
+    tweets_SP <- fromJSON("https://raw.githubusercontent.com/mppallante/NLPTwitter-BR/master/json/tweets_SP.json")
+    remove_modal_spinner()
+    
+    ##### Controle de Filtro #####
+    
+    text <- reactive({
+        text <- switch(input$tema, 
+                       "Brasil"={
+                           tweets_Brasil
+                       },
+                       "Bolsonaro"={
+                           tweets_Bolsonaro    
+                       },
+                       "COVID-19"={
+                           tweets_Covid19    
+                       },
+                       "São Paulo"={
+                           tweets_SP    
+                       },
+                       {
+                           print('Erro Interno!')
+                       }
         )
-        # Tokenizer
-        STOP <- stopwordslangs$word[which(stopwordslangs$lang == "pt")]
-        df <- dfm(tweets$text,
-                  remove = STOP, 
-                  remove_punct = T,
-                  tolower = T,
-                  case_insensitive = T,
-                  stem = F)
-        df <- dfm_remove(df, pattern = c("#*","@*","https*",emojis$code,"pra", phrase(input$tema)))
-        features_dfm <- textstat_frequency(df, n = 500)
+    })
+    
+    ##### Análise de Texto #####
+    
+    # Nuvem de Palavras
+    output$cloudTweet <- renderEcharts4r({
+        # StopWords
+        STOP_TWITTER <- stopwordslangs$word[which(stopwordslangs$lang == "pt")]
+        STOP <- stopwords(language = "pt", source = "stopwords-iso")
+        EMOJI <- emojis$code
+        # Tokens & DFM
+        df <- text()$text %>%
+            tokens(remove_punct = TRUE,
+                   remove_symbols = TRUE,
+                   remove_numbers = TRUE,
+                   remove_url = TRUE,
+                   remove_separators = TRUE,
+                   split_hyphens = TRUE) %>%
+            tokens_remove(c(STOP_TWITTER, STOP, EMOJI, phrase(input$tema),"#*", "@*")) %>%
+            dfm(tolower = TRUE) %>%
+            dfm_group(text()$user_id)
+        features_dfm <- textstat_frequency(df, n = 1000)
         # Nuvem de palavras
         features_dfm %>% 
             e_color_range(frequency, color) %>% 
             e_charts() %>% 
-            e_cloud(feature, frequency, color, shape = "square", sizeRange = c(20, 60)) %>% 
+            e_cloud(feature, frequency, color, shape = "cirque") %>% 
             e_tooltip() %>% 
             e_theme("infographic") %>%
-            e_legend(show = F) %>% 
-            e_title("Tweets", "Frequência de palavras")
+            e_legend(show = F)
     })
+    # Top 15 Ocorrências de Palavras
     output$topPalavras <- renderEcharts4r({
-        tweets <- switch(input$tema,
-                         "Brasil"={
-                             tweets_Brasil
-                         },
-                         "Bolsonaro"={
-                             tweets_Bolsonaro
-                         },
-                         "COVID-19"={
-                             tweets_Covid19
-                         },
-                         "São Paulo"={
-                             tweets_SP
-                         },
-                         {
-                             print('Erro Interno!')
-                         }
-        )
-        # Tokenizer
-        STOP <- stopwordslangs$word[which(stopwordslangs$lang == "pt")]
-        df <- dfm(tweets$text,
-                  remove = STOP,
-                  remove_punct = T,
-                  tolower = T,
-                  case_insensitive = T,
-                  stem = F)
-        df <- dfm_remove(df, pattern = c("#*","@*","https*",emojis$code ,"pra", phrase(input$tema)))
-        features_dfm <- textstat_frequency(df, n = 25)
+        # StopWords
+        STOP_TWITTER <- stopwordslangs$word[which(stopwordslangs$lang == "pt")]
+        STOP <- stopwords(language = "pt", source = "stopwords-iso")
+        EMOJI <- emojis$code
+        # Tokens & DFM
+        df <- text()$text %>%
+            tokens(remove_punct = TRUE,
+                   remove_symbols = TRUE,
+                   remove_numbers = TRUE,
+                   remove_url = TRUE,
+                   remove_separators = TRUE,
+                   split_hyphens = TRUE) %>%
+            tokens_remove(c(STOP_TWITTER, STOP, EMOJI, phrase(input$tema), "#*", "@*")) %>%
+            dfm(tolower = TRUE) %>%
+            dfm_group(text()$user_id)
+        features_dfm <- textstat_frequency(df, n = 15)
         # Gráfico
         features_dfm %>%
+            arrange(frequency) %>%
             e_charts(feature) %>%
             e_bar(frequency, name = "Frequência") %>%
-            e_title("Tweets", "TOP 25 Palavras") %>%
             e_tooltip() %>%
             e_theme("infographic") %>%
             e_legend(show = F) %>%
-            e_labels()
+            e_labels(position = "right") %>%
+            e_flip_coords()
     })
+    # Modelo de Tópicos de Bitermos
+    output$topics <- renderPlot({
+        show_modal_spinner(spin = "semipolar", text = "Modelo BTM")
+        # StopWords
+        STOP_TWITTER <- stopwordslangs$word[which(stopwordslangs$lang == "pt")]
+        STOP <- stopwords(language = "pt", source = "stopwords-iso")
+        EMOJI <- emojis$code
+        # Tokens & DFM
+        df <- text()$text %>%
+            tokens(remove_punct = TRUE,
+                   remove_symbols = TRUE,
+                   remove_numbers = TRUE,
+                   remove_url = TRUE,
+                   remove_separators = TRUE,
+                   split_hyphens = TRUE) %>%
+            tokens_remove(c(STOP_TWITTER, STOP, EMOJI, phrase(input$tema), "#*", "@*")) %>%
+            dfm(tolower = TRUE) %>%
+            dfm_group(text()$user_id)
+        # Transforma em objeto igraph
+        tn <- as.igraph(fcm(df), min_freq = 1, omit_isolated = FALSE)
+        wc <- cluster_walktrap(tn)
+        members <- membership(wc)
+        # Transforma em formato compativel com networkD3
+        graph_d3 <- igraph_to_networkD3(tn, group = members)
+        links <- as.data.frame(graph_d3$links)
+        nodes <- as.data.frame(graph_d3$nodes)
+        target <- NA
+        source <- NA
+        clusts <- NA
+        for (i in 1:length(links$source)) {
+            target[i] <- nodes$name[[links$target[i]]]
+            source[i] <- ifelse(links$source[i] == 0, NA, nodes$name[[links$source[i]]])
+            clusts[i] <- ifelse(links$source[i] == 0, NA, nodes$group[[links$source[i]]])
+        }
+        graph_df = data.frame(
+            source = source,
+            target = target,
+            clusts = factor(clusts)
+        )
+        graph_df <- graph_df %>%
+            group_by(doc_id = clusts, lemma = source) %>%
+            summarise(freq = n()) %>%
+            na.omit()  
+        graph_df <- graph_df[, c("doc_id", "lemma")]
+        # Modelagem de topicos
+        model <- BTM(graph_df, k = 10, window = 5, iter = 5000, background = T, detailed = T)
+        remove_modal_spinner()
+        plot(model)
+    })
+    # Rede de Palavras
     output$wordsNetwork <- renderPlot({
-        tweets <- switch(input$tema,
-                         "Brasil"={
-                             tweets_Brasil
-                         },
-                         "Bolsonaro"={
-                             tweets_Bolsonaro
-                         },
-                         "COVID-19"={
-                             tweets_Covid19
-                         },
-                         "São Paulo"={
-                             tweets_SP
-                         },
-                         {
-                             print('Erro Interno!')
-                         }
-        )
-        # Tokenizer
-        STOP <- stopwordslangs$word[which(stopwordslangs$lang == "pt")]
-        df <- dfm(tweets$text,
-                  remove = STOP,
-                  remove_punct = T,
-                  tolower = T,
-                  case_insensitive = T,
-                  stem = F)
-        tag_dfm <- dfm_remove(df, pattern = c("#*","@*","https*",emojis$code ,"pra", phrase(input$tema)))
-        toptag <- names(topfeatures(tag_dfm, 25))
-        tag_fcm <- fcm(tag_dfm)
+        # StopWords
+        STOP_TWITTER <- stopwordslangs$word[which(stopwordslangs$lang == "pt")]
+        STOP <- stopwords(language = "pt", source = "stopwords-iso")
+        EMOJI <- emojis$code
+        # Tokens & DFM
+        df <- text()$text %>%
+            tokens(remove_punct = TRUE,
+                   remove_symbols = TRUE,
+                   remove_numbers = TRUE,
+                   remove_url = TRUE,
+                   remove_separators = TRUE,
+                   split_hyphens = TRUE) %>%
+            tokens_remove(c(STOP_TWITTER, STOP, EMOJI, phrase(input$tema), "#*", "@*")) %>%
+            dfm(tolower = TRUE) %>%
+            dfm_group(text()$user_id)
+        # Identifica as maiores frequencias
+        toptag <- names(topfeatures(df, 100))
+        tag_fcm <- fcm(df)
         topgat_fcm <- fcm_select(tag_fcm, pattern = toptag)
-        tn <- textplot_network(topgat_fcm, min_freq = 0.1, edge_alpha = 0.8, edge_size = 5, edge_color = "gold")
-        tn
-    })
-    output$topTags <- renderEcharts4r({
-        tweets <- switch(input$tema,
-                         "Brasil"={
-                             tweets_Brasil
-                         },
-                         "Bolsonaro"={
-                             tweets_Bolsonaro
-                         },
-                         "COVID-19"={
-                             tweets_Covid19
-                         },
-                         "São Paulo"={
-                             tweets_SP
-                         },
-                         {
-                             print('Erro Interno!')
-                         }
+        # Transforma em objeto igraph
+        tn <- as.igraph(topgat_fcm, min_freq = 1, omit_isolated = FALSE)
+        wc <- cluster_walktrap(tn)
+        members <- membership(wc)
+        # Transforma em formato compativel com networkD3
+        graph_d3 <- igraph_to_networkD3(tn, group = members)
+        links <- as.data.frame(graph_d3$links)
+        nodes <- as.data.frame(graph_d3$nodes)
+        # Cria o dataframe final com as associações
+        target <- NA
+        source <- NA
+        clusts <- NA
+        for (i in 1:length(links$source)) {
+            target[i] <- nodes$name[[links$target[i]]]
+            source[i] <- ifelse(links$source[i] == 0, NA, nodes$name[[links$source[i]]])
+            clusts[i] <- ifelse(links$source[i] == 0, NA, nodes$group[[links$source[i]]])
+        }
+        graph_df = data.frame(
+            source = source,
+            target = target,
+            clusts = factor(clusts)
         )
-        # Tokenizer
-        STOP <- stopwordslangs$word[which(stopwordslangs$lang == "pt")]
-        df <- dfm(tweets$text,
-                  remove = STOP,
-                  remove_punct = T,
-                  tolower = T,
-                  case_insensitive = T,
-                  stem = F)
-        df <- dfm_select(df, pattern = c("#*"))
-        features_dfm <- textstat_frequency(df, n = 25)
-        # Gráfico
-        features_dfm %>%
-            e_charts(feature) %>%
-            e_bar(frequency, name = "Frequência") %>%
-            e_title("Tweets", "TOP 25 Tags") %>%
-            e_tooltip() %>%
-            e_theme("infographic") %>%
-            e_legend(show = F) %>%
-            e_labels()
+        graph_df <- graph_df %>%
+            group_by(source, target, clusts) %>%
+            summarise(freq = n()) %>%
+            na.omit()
+        wordnetwork <- as.data.frame(graph_df[,-3])
+        names(wordnetwork) <- c("term1","term2","cooc")
+        wordnetwork <- graph_from_data_frame(wordnetwork)
+        # Rede de palavras
+        ggraph(wordnetwork, layout = "fr") +
+            geom_edge_link(aes(width = cooc, edge_alpha = cooc), edge_colour = "FireBrick") +
+            geom_node_text(aes(label = name), col = "black", size = 5) +
+            theme_graph(base_family = "Arial Narrow") +
+            theme(legend.position = "none")
     })
-    output$tagsNetwork <- renderPlot({
-        tweets <- switch(input$tema,
-                         "Brasil"={
-                             tweets_Brasil
-                         },
-                         "Bolsonaro"={
-                             tweets_Bolsonaro
-                         },
-                         "COVID-19"={
-                             tweets_Covid19
-                         },
-                         "São Paulo"={
-                             tweets_SP
-                         },
-                         {
-                             print('Erro Interno!')
-                         }
-        )
-        # Tokenizer
-        STOP <- stopwordslangs$word[which(stopwordslangs$lang == "pt")]
-        df <- dfm(tweets$text,
-                  remove = STOP,
-                  remove_punct = T,
-                  tolower = T,
-                  case_insensitive = T,
-                  stem = F)
-        tag_dfm <- dfm_select(df, pattern = c("#*"))
-        toptag <- names(topfeatures(tag_dfm, 25))
-        tag_fcm <- fcm(tag_dfm)
-        topgat_fcm <- fcm_select(tag_fcm, pattern = toptag)
-        tn <- textplot_network(topgat_fcm, min_freq = 0.1, edge_alpha = 0.8, edge_size = 5, edge_color = "gold")
-        tn
-    })
-    output$topMenções <- renderEcharts4r({
-        tweets <- switch(input$tema,
-                         "Brasil"={
-                             tweets_Brasil
-                         },
-                         "Bolsonaro"={
-                             tweets_Bolsonaro
-                         },
-                         "COVID-19"={
-                             tweets_Covid19
-                         },
-                         "São Paulo"={
-                             tweets_SP
-                         },
-                         {
-                             print('Erro Interno!')
-                         }
-        )
-        # Tokenizer
-        STOP <- stopwordslangs$word[which(stopwordslangs$lang == "pt")]
-        df <- dfm(tweets$text,
-                  remove = STOP,
-                  remove_punct = T,
-                  tolower = T,
-                  case_insensitive = T,
-                  stem = F)
-        df <- dfm_select(df, pattern = c("@*"))
-        features_dfm <- textstat_frequency(df, n = 25)
-        # Gráfico
-        features_dfm %>%
-            e_charts(feature) %>%
-            e_bar(frequency, name = "Frequência") %>%
-            e_title("Tweets", "TOP 25 Menções") %>%
-            e_tooltip() %>%
-            e_theme("infographic") %>%
-            e_legend(show = F) %>%
-            e_labels()
-    })
-    output$MençõesNetwork <- renderPlot({
-        tweets <- switch(input$tema,
-                         "Brasil"={
-                             tweets_Brasil
-                         },
-                         "Bolsonaro"={
-                             tweets_Bolsonaro
-                         },
-                         "COVID-19"={
-                             tweets_Covid19
-                         },
-                         "São Paulo"={
-                             tweets_SP
-                         },
-                         {
-                             print('Erro Interno!')
-                         }
-        )
-        # Tokenizer
-        STOP <- stopwordslangs$word[which(stopwordslangs$lang == "pt")]
-        df <- dfm(tweets$text,
-                  remove = STOP,
-                  remove_punct = T,
-                  tolower = T,
-                  case_insensitive = T,
-                  stem = F)
-        tag_dfm <- dfm_select(df, pattern = c("@*"))
-        toptag <- names(topfeatures(tag_dfm, 25))
-        tag_fcm <- fcm(tag_dfm)
-        topgat_fcm <- fcm_select(tag_fcm, pattern = toptag)
-        tn <- textplot_network(topgat_fcm, min_freq = 0.1, edge_alpha = 0.8, edge_size = 5, edge_color = "gold")
-        tn
-    })
+    # Análise de Sentimentos
     output$feeling <- renderEcharts4r({
-        show_modal_spinner(spin = "semipolar", text = "Processando")
-        rstats_tweets <- switch(input$tema,
-                                "Brasil"={
-                                    tweets_Brasil
-                                },
-                                "Bolsonaro"={
-                                    tweets_Bolsonaro
-                                },
-                                "COVID-19"={
-                                    tweets_Covid19
-                                },
-                                "São Paulo"={
-                                    tweets_SP
-                                },
-                                {
-                                    print('Erro Interno!')
-                                }
-        )
-        # Analise de sentimentos
-        felling <- get_nrc_sentiment(rstats_tweets$text, language = "portuguese")
+        show_modal_spinner(spin = "semipolar", text = "Modelo NRC")
+        # Modelo de sentimentos
+        felling <- get_nrc_sentiment(text()$text, language = "portuguese")
         names(felling) <- c("Raiva", "Ansiedade", "Desgosto", "Receio", "Alegria", "Tristeza",
                             "Surpresa", "Confiança", "Negativo", "Positivo")
-        # Preparação dos dados
+        # Tratamento dos dados
         felling <- felling %>%
-            #group_by(Serviço) %>%
             summarise("Raiva" = round(sum(Raiva)),
                       "Ansiedade" = round(sum(Ansiedade)),
                       "Desgosto" = round(sum(Desgosto)),
@@ -326,50 +253,187 @@ server <- function(input, output, session) {
                         id.vars = "ID",
                         variable.names = "Sentimentos",
                         value.name = "Volumetria")
+        # Cores do gráfico
+        felling$color <-  c("#D3D3D3","#D3D3D3",
+                            "#D3D3D3","#D3D3D3",
+                            "#D3D3D3","#D3D3D3",
+                            "#D3D3D3","#D3D3D3",
+                            "#B22222","#32CD32")
+        # Gráfico sobre os Sentimentos
         remove_modal_spinner()
-        # Gráfico
         felling %>%
+            arrange(Volumetria) %>%
             e_charts(variable) %>%
-            e_bar(Volumetria, name = "Volumetria") %>%
-            e_title("Volumetria de palavras sobre os sentimentos") %>%
+            e_bar(Volumetria, name = "Freqência") %>%
+            e_tooltip() %>%
+            e_theme("infographic") %>%
+            e_legend(show = F) %>%
+            e_labels(position = "right")  %>% 
+            e_flip_coords() %>%
+            e_add("itemStyle", color) 
+    })
+    
+    # ##### Análise de Tags #####
+    
+    # Top 15 Ocorrências de Tags
+    output$topTags <- renderEcharts4r({
+        # Tokens & DFM
+        df <- text()$text %>%
+            tokens(remove_punct = TRUE,
+                   remove_symbols = TRUE,
+                   remove_numbers = TRUE,
+                   remove_url = TRUE,
+                   remove_separators = TRUE,
+                   split_hyphens = TRUE) %>%
+            tokens_remove(c(phrase(input$tema), paste0("#",phrase(input$tema)))) %>%
+            tokens_select(pattern = c("#*")) %>%
+            dfm(tolower = TRUE) %>%
+            dfm_group(text()$user_id)
+        features_dfm <- textstat_frequency(df, n = 15)
+        # Gráfico
+        features_dfm %>%
+            e_charts(feature) %>%
+            e_bar(frequency, name = "Frequência") %>%
             e_tooltip() %>%
             e_theme("infographic") %>%
             e_legend(show = F) %>%
             e_labels()
     })
-    output$topics <- renderPlot({
-        show_modal_spinner(spin = "semipolar", text = "Processando")
-        rstats_tweets <- switch(input$tema,
-                                "Brasil"={
-                                    tweets_Brasil
-                                },
-                                "Bolsonaro"={
-                                    tweets_Bolsonaro
-                                },
-                                "COVID-19"={
-                                    tweets_Covid19
-                                },
-                                "São Paulo"={
-                                    tweets_SP
-                                },
-                                {
-                                    print('Erro Interno!')
-                                }
+    # Rede de Palavras sobre as Tags
+    output$tagsNetwork <- renderPlot({
+        # Tokens & DFM
+        df <- text()$text %>%
+            tokens(remove_punct = TRUE,
+                   remove_symbols = TRUE,
+                   remove_numbers = TRUE,
+                   remove_url = TRUE,
+                   remove_separators = TRUE,
+                   split_hyphens = TRUE) %>%
+            tokens_remove(c(phrase(input$tema), paste0("#",phrase(input$tema)))) %>%
+            tokens_select(pattern = c("#*")) %>%
+            dfm(tolower = TRUE) %>%
+            dfm_group(text()$user_id)
+        # Identifica as maiores frequencias
+        toptag <- names(topfeatures(df, 100))
+        tag_fcm <- fcm(df)
+        topgat_fcm <- fcm_select(tag_fcm, pattern = toptag)
+        # Transforma em objeto igraph
+        tn <- as.igraph(topgat_fcm, min_freq = 1, omit_isolated = FALSE)
+        wc <- cluster_walktrap(tn)
+        members <- membership(wc)
+        # Transforma em formato compativel com networkD3
+        graph_d3 <- igraph_to_networkD3(tn, group = members)
+        links <- as.data.frame(graph_d3$links)
+        nodes <- as.data.frame(graph_d3$nodes)
+        # Cria o dataframe final com as associações
+        target <- NA
+        source <- NA
+        clusts <- NA
+        for (i in 1:length(links$source)) {
+            target[i] <- nodes$name[[links$target[i]]]
+            source[i] <- ifelse(links$source[i] == 0, NA, nodes$name[[links$source[i]]])
+            clusts[i] <- ifelse(links$source[i] == 0, NA, nodes$group[[links$source[i]]])
+        }
+        graph_df = data.frame(
+            source = source,
+            target = target,
+            clusts = factor(clusts)
         )
-        STOP <- stopwordslangs$word[which(stopwordslangs$lang == "pt")]
-        df <- dfm(rstats_tweets$text,
-                  remove = STOP,
-                  remove_punct = T,
-                  tolower = T,
-                  case_insensitive = T,
-                  stem = F)
-        df <- dfm_remove(df, pattern = c("#*","@*","https*",emojis$code,"pra", phrase(input$tema)))
-        df <- dfm_trim(df, min_termfreq = 4, max_docfreq = 10)
-        my_lda_fit10 <- stm(df, K = 10, verbose = FALSE)
-        remove_modal_spinner()
-        plot(my_lda_fit10)
+        graph_df <- graph_df %>%
+            group_by(source, target, clusts) %>%
+            summarise(freq = n()) %>%
+            na.omit()
+        wordnetwork <- as.data.frame(graph_df[,-3])
+        names(wordnetwork) <- c("term1","term2","cooc")
+        wordnetwork <- graph_from_data_frame(wordnetwork)
+        # Rede de palavras
+        ggraph(wordnetwork, layout = "fr") +
+            geom_edge_link(aes(width = cooc, edge_alpha = cooc), edge_colour = "FireBrick") +
+            geom_node_text(aes(label = name), col = "black", size = 5) +
+            theme_graph(base_family = "Arial Narrow") +
+            theme(legend.position = "none")
     })
     
-    remove_modal_spinner()
+    ##### Análise de Menções #####
+    
+    # Top 15 Ocorrências de Menções
+    output$topMenções <- renderEcharts4r({
+        # Tokens & DFM
+        df <- text()$text %>%
+            tokens(remove_punct = TRUE,
+                   remove_symbols = TRUE,
+                   remove_numbers = TRUE,
+                   remove_url = TRUE,
+                   remove_separators = TRUE,
+                   split_hyphens = TRUE) %>%
+            tokens_remove(c(phrase(input$tema), paste0("@",phrase(input$tema)))) %>%
+            tokens_select(pattern = c("@*")) %>%
+            dfm(tolower = TRUE) %>%
+            dfm_group(text()$user_id)
+        features_dfm <- textstat_frequency(df, n = 15)
+        # Gráfico
+        features_dfm %>%
+            e_charts(feature) %>%
+            e_bar(frequency, name = "Frequência") %>%
+            e_tooltip() %>%
+            e_theme("infographic") %>%
+            e_legend(show = F) %>%
+            e_labels()
+    })
+    # Rede de Palavras sobre as Menções
+    output$MençõesNetwork <- renderPlot({
+        # Tokens & DFM
+        df <- text()$text %>%
+            tokens(remove_punct = TRUE,
+                   remove_symbols = TRUE,
+                   remove_numbers = TRUE,
+                   remove_url = TRUE,
+                   remove_separators = TRUE,
+                   split_hyphens = TRUE) %>%
+            tokens_remove(c(phrase(input$tema), paste0("@",phrase(input$tema)))) %>%
+            tokens_select(pattern = c("@*")) %>%
+            dfm(tolower = TRUE) %>%
+            dfm_group(text()$user_id)
+        # Identifica as maiores frequencias
+        toptag <- names(topfeatures(df, 100))
+        tag_fcm <- fcm(df)
+        topgat_fcm <- fcm_select(tag_fcm, pattern = toptag)
+        # Transforma em objeto igraph
+        tn <- as.igraph(topgat_fcm, min_freq = 1, omit_isolated = FALSE)
+        wc <- cluster_walktrap(tn)
+        members <- membership(wc)
+        # Transforma em formato compativel com networkD3
+        graph_d3 <- igraph_to_networkD3(tn, group = members)
+        links <- as.data.frame(graph_d3$links)
+        nodes <- as.data.frame(graph_d3$nodes)
+        # Cria o dataframe final com as associações
+        target <- NA
+        source <- NA
+        clusts <- NA
+        for (i in 1:length(links$source)) {
+            target[i] <- nodes$name[[links$target[i]]]
+            source[i] <- ifelse(links$source[i] == 0, NA, nodes$name[[links$source[i]]])
+            clusts[i] <- ifelse(links$source[i] == 0, NA, nodes$group[[links$source[i]]])
+        }
+        graph_df = data.frame(
+            source = source,
+            target = target,
+            clusts = factor(clusts)
+        )
+        graph_df <- graph_df %>%
+            group_by(source, target, clusts) %>%
+            summarise(freq = n()) %>%
+            na.omit()
+        wordnetwork <- as.data.frame(graph_df[,-3])
+        names(wordnetwork) <- c("term1","term2","cooc")
+        wordnetwork <- graph_from_data_frame(wordnetwork)
+        # Rede de palavras
+        ggraph(wordnetwork, layout = "fr") +
+            geom_edge_link(aes(width = cooc, edge_alpha = cooc), edge_colour = "FireBrick") +
+            geom_node_text(aes(label = name), col = "black", size = 5) +
+            theme_graph(base_family = "Arial Narrow") +
+            theme(legend.position = "none")
+    })
+    
 }
 
