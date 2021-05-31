@@ -2,8 +2,9 @@
 
 library(shiny)
 library(shinyWidgets)
-library(shinybusy)
 library(bs4Dash)
+library(thematic)
+library(waiter)
 library(jsonlite)
 library(plotly)
 library(dplyr)
@@ -25,137 +26,319 @@ library(concaveman)
 library(syuzhet)
 library(stopwords)
 library(echarts4r)
+library(visNetwork)
 
 # User Interface ----------------------------------------------------------
 
 ui = bs4DashPage(
-    old_school = FALSE,
-    sidebar_collapsed = FALSE,
-    controlbar_collapsed = TRUE,
-    enable_preloader = TRUE,
-    loading_duration = 5,
-    loading_background = "#1C1C1C",
-    # Nome do Dashboard
-    title = "NLP Twitter - BRASIL",
-    # Menu Superior
-    navbar = bs4DashNavbar(
-        skin = 'light'
-    ),
-    # Menu Lateral Esquerdo
-    sidebar = bs4DashSidebar(
+    
+    # Opções
+    fullscreen = TRUE,
+    help = FALSE,
+    dark = FALSE,
+    scrollToTop = FALSE,
+    
+    # Navbar (Menu Superior) 
+    header = bs4DashNavbar(
+        disable = FALSE, 
+        fixed = TRUE,
+        border = TRUE,
+        compact = FALSE,
         skin = "light",
-        status = "primary",
-        title = "NLP Twitter (Brasil)",
-        src = 'https://media-exp1.licdn.com/dms/image/C561BAQGEbzpXZ34-gQ/company-background_10000/0?e=2159024400&v=beta&t=o3vOn3Ye-qpqlDH64A1of1_aRAQ8TunahPQ4ZWuISRI',
-        brandColor = "gray-light",
-        bs4SidebarMenu(
-            # Páginas do Dashboard
-            bs4SidebarMenuItem(
-                startExpanded = T,
-                tabName = "tweets_twitter",
-                icon = "twitter",
-                text = "Análise de tweets"
-            ),
-            # Sobre a aplicação
-            bs4SidebarHeader("Informações"),
-            bs4SidebarMenuItem(
-                tabName = "about",
-                icon = "info",
-                text = "Aplicação"
+        status = "white",
+        sidebarIcon = shiny::icon("bars"),
+        controlbarIcon = shiny::icon("th"),
+        # Cabeçalho do Dashboard
+        title = dashboardBrand(
+            title = "©MPPallante",
+            color = "primary",
+            image = "https://lh3.googleusercontent.com/ogw/ADGmqu_hZZbh1ioBDSRRb8W85PrmMbB07wcshDOJcM8V9g=s83-c-mo", 
+            href = "https://mppallante.wixsite.com/mppallante",
+            opacity = 0.8
+        ),
+        # Caixa de Mensagens
+        rightUi = tagList(
+            dropdownMenu(
+                headerText = "Você tem 1 notificação",
+                badgeStatus = "danger",
+                type = "messages",
+                icon = shiny::icon("bell"),
+                messageItem(
+                    inputId = "triggerAction1",
+                    from = HTML("<strong>Desenvolvedor</strong>"),
+                    message = HTML("Atualização realizada!
+                         <br>Layout:2.0
+                         <br>R: 4.1.0
+                         <br>Rstudio: 1.4.1106"),
+                    image = "https://lh3.googleusercontent.com/ogw/ADGmqu_hZZbh1ioBDSRRb8W85PrmMbB07wcshDOJcM8V9g=s83-c-mo",
+                    time = "Hoje",
+                    color = "navy",
+                    icon = shiny::icon("code")
+                )
             )
         )
     ),
-    # Footer
-    footer = bs4DashFooter(
-        copyrights = a(
-            href = "https://mppallante.wixsite.com/mppallante", 
-            target = "_blank", "©MPPallante. Todos os direitos reservados."
+    
+    # Sidebar (Menu Lateral)
+    sidebar = bs4DashSidebar(
+        # Opções
+        id = "sidebar",
+        disable = FALSE,
+        fixed = TRUE,
+        collapsed = FALSE,
+        minified = TRUE,
+        expandOnHover = TRUE,
+        width = NULL,
+        elevation = 4,
+        skin = "light",
+        status = "primary",
+        customArea = NULL,
+        # Segundo Titulo
+        sidebarUserPanel(
+            name = HTML("<strong>NLP TWITTER BRASIL</strong>")
         ),
-        right_text = lubridate::year(Sys.time())
-    ), 
-    # Corpo do Dahboard
+        # Menu
+        sidebarMenu(
+            sidebarHeader("APLICAÇÃO"),
+            # Página 1
+            menuItem(
+                text = "Análise de tweets",
+                tabName = "tweets_twitter",
+                icon = shiny::icon("twitter"),
+                selected = TRUE
+            ),
+            # Página 2
+            sidebarHeader("INFORMAÇÕES"),
+            menuItem(
+                text = "Aplicação",
+                tabName = "about",
+                icon = shiny::icon("info")
+            )
+        )
+    ),
+    
+    # Controlbar (Menu de Controles)
+    controlbar = dashboardControlbar(
+        # Opções
+        id = "controlbar",
+        disable = FALSE,
+        pinned = FALSE,
+        collapsed = TRUE,
+        overlay = FALSE,
+        width = 250,
+        skin = "light",
+        controlbarMenu(
+            # Opções
+            id = "controlbarMenu",
+            type = "pills",
+            selected = "Controles",
+            #  Menu de Controles
+            controlbarItem(
+                title = "Controles"
+                
+            ),
+            # Menu de temas
+            controlbarItem(
+                title = "Temas",
+                skinSelector()
+            )
+        )
+    ),
+    
+    # Main Body (Corpo Principal)
     body = bs4DashBody(
         bs4TabItems(
-            # Página Inicial
+            # Página 1 - Análise de tweets
             bs4TabItem(
-                tabName = 'tweets_twitter',
-                fluidPage(
-                    # Filtro
-                    bs4Card(title = 'Filtro', height = "auto", status = 'navy', 
-                            width = NULL, closable = F, maximizable = F, collapsible = F,
-                            pickerInput(inputId = "tema", 
-                                        label = "Assuntos:", 
-                                        choices = c("Brasil","COVID-19","Bolsonaro","São Paulo"), 
-                                        width = "100%", 
-                                        inline = F)),
-                    # Nuvem de Palavras
-                    bs4Card(title = 'Nuvem de Palavras', height = 400, status = 'primary',
-                            width = NULL, closable = F, maximizable = T, collapsible = F,
-                            echarts4rOutput(outputId = "cloudTweet", width = "100%", height = "100%")),
-                    # Top 15 Ocorrências de Palavras
-                    bs4Card(title = 'Top 15 Ocorrências de Palavras', height = 400, status = 'primary',
-                            width = NULL, closable = F, maximizable = T, collapsible = F,
-                            echarts4rOutput(outputId = 'topPalavras', width = "100%", height = "100%"))
+                use_waiter(),
+                tabName = "tweets_twitter",
+                # Filtro
+                bs4Card(
+                    title = "Configuração", 
+                    closable = FALSE,
+                    collapsible = FALSE,
+                    collapsed = FALSE,
+                    maximizable = FALSE,
+                    solidHeader = TRUE, 
+                    elevation = 4,
+                    width = 12,
+                    height = "auto",
+                    status = "navy",
+                    # Filtro 
+                    pickerInput(inputId = "tema", 
+                                label = "Assuntos:", 
+                                choices = c("Brasil","COVID-19","Bolsonaro","São Paulo"), 
+                                width = "100%", 
+                                inline = F)
+                ),
+                # Nuvem de Palavras
+                bs4Card(
+                    title = "Nuvem de Palavras", 
+                    closable = FALSE,
+                    collapsible = FALSE,
+                    collapsed = FALSE,
+                    maximizable = TRUE,
+                    solidHeader = TRUE, 
+                    elevation = 4,
+                    width = 12,
+                    height = 400,
+                    status = "primary",
+                    # Gráfico 
+                    echarts4rOutput(outputId = "cloudTweet", width = "100%", height = "100%")
+                ),
+                # Top 15 Ocorrências de Palavras
+                bs4Card(
+                    title = "Top 15 Ocorrências de Palavras", 
+                    closable = FALSE,
+                    collapsible = FALSE,
+                    collapsed = FALSE,
+                    maximizable = TRUE,
+                    solidHeader = TRUE, 
+                    elevation = 4,
+                    width = 12,
+                    height = 400,
+                    status = "primary",
+                    # Gráfico 
+                    echarts4rOutput(outputId = "topPalavras", width = "100%", height = "100%")
                 ),
                 fluidRow(
                     # Modeagem de Tópicos
-                    column(width = 6,
-                           bs4Card(title = 'Modeagem de Tópicos', height = 400, status = 'primary',
-                                   width = NULL, closable = F, maximizable = T, collapsible = F,
-                                   plotOutput(outputId = 'topics', width = "100%", height = "100%"))),
+                    bs4Card(
+                        title = "Modeagem de Tópicos",
+                        closable = FALSE,
+                        collapsible = FALSE,
+                        collapsed = FALSE,
+                        maximizable = TRUE,
+                        solidHeader = TRUE,
+                        elevation = 4,
+                        width = 6,
+                        height = 400,
+                        status = "primary",
+                        # Gráfico
+                        plotOutput(outputId = "topics", width = "100%", height = "100%")
+                    ),
                     # Rede de Palavras
-                    column(width = 6,
-                           bs4Card(title = 'Rede de Palavras', height = 400, status = 'primary',
-                                   width = NULL, closable = F, maximizable = T, collapsible = F,
-                                   plotOutput(outputId = "wordsNetwork", width = "100%", height = "100%")))
+                    bs4Card(
+                        title = "Rede de Palavras",
+                        closable = FALSE,
+                        collapsible = FALSE,
+                        collapsed = FALSE,
+                        maximizable = TRUE,
+                        solidHeader = TRUE,
+                        elevation = 4,
+                        width = 6,
+                        height = 400,
+                        status = "primary",
+                        # Gráfico
+                        #visNetworkOutput(outputId = "wordsNetwork", width = "100%", height = "100%")
+                        plotOutput(outputId = "wordsNetwork", width = "100%", height = "100%")
+                    )
                 ),
-                fluidPage(
-                    # Análise de Sentimentos
-                    bs4Card(title = 'Análise de Sentimentos', height = 400, status = 'primary',
-                            width = NULL, closable = F, maximizable = T, collapsible = F,
-                            echarts4rOutput(outputId = 'feeling', width = "100%", height = "100%"))
+                # Análise de Sentimentos
+                bs4Card(
+                    title = "Análise de Sentimentos", 
+                    closable = FALSE,
+                    collapsible = FALSE,
+                    collapsed = FALSE,
+                    maximizable = TRUE,
+                    solidHeader = TRUE, 
+                    elevation = 4,
+                    width = 12,
+                    height = 400,
+                    status = "primary",
+                    # Gráfico 
+                    echarts4rOutput(outputId = "feeling", width = "100%", height = "100%")
                 ),
-                # Tags
                 fluidRow(
-                    column(width = 6,
-                           # Top 15 Ocorrências de Palavras
-                           bs4Card(title = 'Top 15 Ocorrências sobre Tags', height = 400, status = 'warning',
-                                   width = NULL, closable = F, maximizable = T, collapsible = F,
-                                   echarts4rOutput(outputId = 'topTags', width = "100%", height = "100%"))),
-                    column(width = 6,
-                           # Rede de Palavras sobre as Tags
-                           bs4Card(title = 'Rede de Palavras sobre as Tags', height = 400, status = 'warning',
-                                   width = NULL, closable = F, maximizable = T, collapsible = F,
-                                   plotOutput(outputId = "tagsNetwork", width = "100%", height = "100%")))
+                    # Top 15 Ocorrências sobre Tags
+                    bs4Card(
+                        title = "Top 15 Ocorrências sobre Tags",
+                        closable = FALSE,
+                        collapsible = FALSE,
+                        collapsed = FALSE,
+                        maximizable = TRUE,
+                        solidHeader = TRUE,
+                        elevation = 4,
+                        width = 6,
+                        height = 400,
+                        status = "purple",
+                        # Gráfico
+                        echarts4rOutput(outputId = "topTags", width = "100%", height = "100%")
+                    ),
+                    # Rede de Palavras sobre as Tags
+                    bs4Card(
+                        title = "Rede de Palavras sobre as Tags",
+                        closable = FALSE,
+                        collapsible = FALSE,
+                        collapsed = FALSE,
+                        maximizable = TRUE,
+                        solidHeader = TRUE,
+                        elevation = 4,
+                        width = 6,
+                        height = 400,
+                        status = "purple",
+                        # Gráfico
+                        #visNetworkOutput(outputId = "tagsNetwork", width = "100%", height = "100%")
+                        plotOutput(outputId = "tagsNetwork", width = "100%", height = "100%")
+                    )
                 ),
-                # Menções
                 fluidRow(
-                    column(width = 6,
-                           # Top 15 Ocorrências de Palavras
-                           bs4Card(title = 'Top 15 Ocorrências sobre Menções', height = 400, status = 'olive',
-                                   width = NULL, closable = F, maximizable = T, collapsible = F,
-                                   echarts4rOutput('topMenções', width = "100%", height = "100%"))),
-                    column(width = 6,
-                           # Rede de Palavras sobre as Menções
-                           bs4Card(title = 'Rede de Palavras sobre as Menções', height = 400, status = 'olive',
-                                   width = NULL, closable = F, maximizable = T, collapsible = F,
-                                   plotOutput(outputId = "MençõesNetwork", width = "100%", height = "100%")))
+                    # Top 15 Ocorrências de Menções
+                    bs4Card(
+                        title = "Top 15 Ocorrências de Menções",
+                        closable = FALSE,
+                        collapsible = FALSE,
+                        collapsed = FALSE,
+                        maximizable = TRUE,
+                        solidHeader = TRUE,
+                        elevation = 4,
+                        width = 6,
+                        height = 400,
+                        status = "purple",
+                        # Gráfico
+                        echarts4rOutput(outputId = "topMenções", width = "100%", height = "100%")
+                    ),
+                    # Rede de Palavras sobre as Menções
+                    bs4Card(
+                        title = "Rede de Palavras sobre as Menções",
+                        closable = FALSE,
+                        collapsible = FALSE,
+                        collapsed = FALSE,
+                        maximizable = TRUE,
+                        solidHeader = TRUE,
+                        elevation = 4,
+                        width = 6,
+                        height = 400,
+                        status = "purple",
+                        # Gráfico
+                        #visNetworkOutput(outputId = "MençõesNetwork", width = "100%", height = "100%")
+                        plotOutput(outputId = "MençõesNetwork", width = "100%", height = "100%")
+                    )
                 )
             ),
-            # Sobre
+            # Página 2 - Aplicação
             bs4TabItem(
-                tabName = 'about',
-                fluidPage(
-                    bs4Jumbotron(
-                        title = "NLP Twitter (BRASIL) - GITHUB",
-                        lead = "Desenvolvido para análise de textos do Twitter.",
-                        status = "primary",
-                        btn_name = 'GITHUB',
-                        href = "https://github.com/mppallante/NLPTwitter-BR"
-                    )
+                tabName = "about",
+                use_waiter(),
+                bs4Jumbotron(
+                    title = "NLP TWITTER BRASIL - GITHUB",
+                    lead = "Desenvolvido para análise de textos do Twitter.",
+                    status = "primary",
+                    btnName = "GITHUB",
+                    href = "https://github.com/mppallante/NLPTwitter-BR"
                 )
             )
         )
-    ) 
-)
+    ),
+    
+    # Footer
+    footer = dashboardFooter(
+        fixed = TRUE,
+        left = a(
+            href = "https://mppallante.wixsite.com/mppallante",
+            target = "_blank", "©MPPallante. Todos os direitos reservados."
+        ),
+        right = lubridate::year(Sys.time())
+    )
 
+)
