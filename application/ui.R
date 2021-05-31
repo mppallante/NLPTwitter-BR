@@ -118,32 +118,32 @@ ui = bs4DashPage(
     ),
     
     # Controlbar (Menu de Controles)
-    controlbar = dashboardControlbar(
-        # Opções
-        id = "controlbar",
-        disable = FALSE,
-        pinned = FALSE,
-        collapsed = TRUE,
-        overlay = FALSE,
-        width = 250,
-        skin = "light",
-        controlbarMenu(
-            # Opções
-            id = "controlbarMenu",
-            type = "pills",
-            selected = "Controles",
-            #  Menu de Controles
-            controlbarItem(
-                title = "Controles"
-                
-            ),
-            # Menu de temas
-            controlbarItem(
-                title = "Temas",
-                skinSelector()
-            )
-        )
-    ),
+    # controlbar = dashboardControlbar(
+    #     # Opções
+    #     id = "controlbar",
+    #     disable = FALSE,
+    #     pinned = FALSE,
+    #     collapsed = TRUE,
+    #     overlay = FALSE,
+    #     width = 250,
+    #     skin = "light",
+    #     controlbarMenu(
+    #         # Opções
+    #         id = "controlbarMenu",
+    #         type = "pills",
+    #         selected = "Controles",
+    #         #  Menu de Controles
+    #         controlbarItem(
+    #             title = "Controles"
+    #             
+    #         ),
+    #         # Menu de temas
+    #         controlbarItem(
+    #             title = "Temas",
+    #             skinSelector()
+    #         )
+    #     )
+    # ),
     
     # Main Body (Corpo Principal)
     body = bs4DashBody(
