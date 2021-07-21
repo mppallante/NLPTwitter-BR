@@ -36,7 +36,7 @@ ui = bs4DashPage(
   fullscreen = TRUE,
   help = FALSE,
   dark = FALSE,
-  scrollToTop = FALSE,
+  scrollToTop = TRUE,
   
   # Navbar (Menu Superior) 
   header = bs4DashNavbar(
@@ -66,12 +66,9 @@ ui = bs4DashPage(
         messageItem(
           inputId = "triggerAction1",
           from = HTML("<strong>Desenvolvedor</strong>"),
-          message = HTML("Atualização realizada!
-                         <br>Layout:2.0
-                         <br>R: 4.1.0
-                         <br>Rstudio: 1.4.1106"),
+          message = HTML("Atualização realizada!"),
           image = "https://lh3.googleusercontent.com/ogw/ADGmqu_hZZbh1ioBDSRRb8W85PrmMbB07wcshDOJcM8V9g=s83-c-mo",
-          time = "Hoje",
+          time = "21/07/2021",
           color = "navy",
           icon = shiny::icon("code")
         )

@@ -44,7 +44,7 @@ server <- function(input, output, session) {
         # Estilo do Spin
         html = spin_whirly(), 
         # Cor de fundo
-        color = "white")
+        color = transparent(alpha = .75))
     # Tema - Auto Color
     useAutoColor()
     
