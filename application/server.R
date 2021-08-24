@@ -31,6 +31,9 @@ library(visNetwork)
 # Server Side -------------------------------------------------------------
 
 server <- function(input, output, session) {
+    
+    # Configurações -----------------------------------------------------------
+    
     # Configurações do Loading (Tela de Carregamento - Gráficos)
     w <- Waiter$new(
         id = c(
@@ -45,6 +48,7 @@ server <- function(input, output, session) {
         html = spin_whirly(), 
         # Cor de fundo
         color = transparent(alpha = .75))
+    
     # Tema - Auto Color
     useAutoColor()
     
@@ -58,7 +62,7 @@ server <- function(input, output, session) {
     tweets_Bolsonaro <- fromJSON("https://raw.githubusercontent.com/mppallante/NLPTwitter-BR/master/json/tweets_Bolsonaro.json")
     # Dados do Twitter sobre o Estado de São Paulo
     tweets_SP <- fromJSON("https://raw.githubusercontent.com/mppallante/NLPTwitter-BR/master/json/tweets_SP.json")
-
+    
     ##### Controle de Filtro #####
     
     text <- reactive({
@@ -215,41 +219,9 @@ server <- function(input, output, session) {
         toptag <- names(topfeatures(df, 100))
         tag_fcm <- fcm(df)
         topgat_fcm <- fcm_select(tag_fcm, pattern = toptag)
-        # Transforma em objeto igraph
-        tn <- as.igraph(topgat_fcm, min_freq = 1, omit_isolated = FALSE)
-        wc <- cluster_walktrap(tn)
-        members <- membership(wc)
-        # Transforma em formato compativel com networkD3
-        graph_d3 <- igraph_to_networkD3(tn, group = members)
-        links <- as.data.frame(graph_d3$links)
-        nodes <- as.data.frame(graph_d3$nodes)
-        # Cria o dataframe final com as associações
-        target <- NA
-        source <- NA
-        clusts <- NA
-        for (i in 1:length(links$source)) {
-            target[i] <- nodes$name[[links$target[i]]]
-            source[i] <- ifelse(links$source[i] == 0, NA, nodes$name[[links$source[i]]])
-            clusts[i] <- ifelse(links$source[i] == 0, NA, nodes$group[[links$source[i]]])
-        }
-        graph_df = data.frame(
-            source = source,
-            target = target,
-            clusts = factor(clusts)
-        )
-        graph_df <- graph_df %>%
-            group_by(source, target, clusts) %>%
-            summarise(freq = n()) %>%
-            na.omit()
-        wordnetwork <- as.data.frame(graph_df[,-3])
-        names(wordnetwork) <- c("term1","term2","cooc")
-        wordnetwork <- graph_from_data_frame(wordnetwork)
+        w$hide()
         # Rede de palavras
-        ggraph(wordnetwork, layout = "fr") +
-            geom_edge_link(aes(width = cooc, edge_alpha = cooc), edge_colour = "FireBrick") +
-            geom_node_text(aes(label = name), col = "black", size = 5) +
-            theme_graph(base_family = "Arial Narrow") +
-            theme(legend.position = "none")
+        textplot_network(topgat_fcm, min_freq = .75, edge_alpha = 1, edge_size = 1, edge_color = "#FFA500")
     })
     # Rede de Palavras
     # output$wordsNetwork <- renderVisNetwork({
@@ -368,7 +340,7 @@ server <- function(input, output, session) {
     })
     
     ##### Análise de Tags #####
-
+    
     # Top 15 Ocorrências de Tags
     output$topTags <- renderEcharts4r({
         # Carregamento
@@ -415,41 +387,9 @@ server <- function(input, output, session) {
         toptag <- names(topfeatures(df, 100))
         tag_fcm <- fcm(df)
         topgat_fcm <- fcm_select(tag_fcm, pattern = toptag)
-        # Transforma em objeto igraph
-        tn <- as.igraph(topgat_fcm, min_freq = 1, omit_isolated = FALSE)
-        wc <- cluster_walktrap(tn)
-        members <- membership(wc)
-        # Transforma em formato compativel com networkD3
-        graph_d3 <- igraph_to_networkD3(tn, group = members)
-        links <- as.data.frame(graph_d3$links)
-        nodes <- as.data.frame(graph_d3$nodes)
-        # Cria o dataframe final com as associações
-        target <- NA
-        source <- NA
-        clusts <- NA
-        for (i in 1:length(links$source)) {
-            target[i] <- nodes$name[[links$target[i]]]
-            source[i] <- ifelse(links$source[i] == 0, NA, nodes$name[[links$source[i]]])
-            clusts[i] <- ifelse(links$source[i] == 0, NA, nodes$group[[links$source[i]]])
-        }
-        graph_df = data.frame(
-            source = source,
-            target = target,
-            clusts = factor(clusts)
-        )
-        graph_df <- graph_df %>%
-            group_by(source, target, clusts) %>%
-            summarise(freq = n()) %>%
-            na.omit()
-        wordnetwork <- as.data.frame(graph_df[,-3])
-        names(wordnetwork) <- c("term1","term2","cooc")
-        wordnetwork <- graph_from_data_frame(wordnetwork)
+        w$hide()
         # Rede de palavras
-        ggraph(wordnetwork, layout = "fr") +
-            geom_edge_link(aes(width = cooc, edge_alpha = cooc), edge_colour = "FireBrick") +
-            geom_node_text(aes(label = name), col = "black", size = 5) +
-            theme_graph(base_family = "Arial Narrow") +
-            theme(legend.position = "none")
+        textplot_network(topgat_fcm, min_freq = .75, edge_alpha = 1, edge_size = 1, edge_color = "#FFA500")
     })
     # Rede de Palavras sobre as Tags
     # output$tagsNetwork <- renderVisNetwork({
@@ -520,9 +460,9 @@ server <- function(input, output, session) {
     #         visOptions(highlightNearest = FALSE) %>%
     #         visInteraction(navigationButtons = TRUE)
     # })
-
+    
     ##### Análise de Menções #####
-
+    
     # Top 15 Ocorrências de Menções
     output$topMenções <- renderEcharts4r({
         # Carregamento
@@ -569,41 +509,9 @@ server <- function(input, output, session) {
         toptag <- names(topfeatures(df, 100))
         tag_fcm <- fcm(df)
         topgat_fcm <- fcm_select(tag_fcm, pattern = toptag)
-        # Transforma em objeto igraph
-        tn <- as.igraph(topgat_fcm, min_freq = 1, omit_isolated = FALSE)
-        wc <- cluster_walktrap(tn)
-        members <- membership(wc)
-        # Transforma em formato compativel com networkD3
-        graph_d3 <- igraph_to_networkD3(tn, group = members)
-        links <- as.data.frame(graph_d3$links)
-        nodes <- as.data.frame(graph_d3$nodes)
-        # Cria o dataframe final com as associações
-        target <- NA
-        source <- NA
-        clusts <- NA
-        for (i in 1:length(links$source)) {
-            target[i] <- nodes$name[[links$target[i]]]
-            source[i] <- ifelse(links$source[i] == 0, NA, nodes$name[[links$source[i]]])
-            clusts[i] <- ifelse(links$source[i] == 0, NA, nodes$group[[links$source[i]]])
-        }
-        graph_df = data.frame(
-            source = source,
-            target = target,
-            clusts = factor(clusts)
-        )
-        graph_df <- graph_df %>%
-            group_by(source, target, clusts) %>%
-            summarise(freq = n()) %>%
-            na.omit()
-        wordnetwork <- as.data.frame(graph_df[,-3])
-        names(wordnetwork) <- c("term1","term2","cooc")
-        wordnetwork <- graph_from_data_frame(wordnetwork)
+        w$hide()
         # Rede de palavras
-        ggraph(wordnetwork, layout = "fr") +
-            geom_edge_link(aes(width = cooc, edge_alpha = cooc), edge_colour = "FireBrick") +
-            geom_node_text(aes(label = name), col = "black", size = 5) +
-            theme_graph(base_family = "Arial Narrow") +
-            theme(legend.position = "none")
+        textplot_network(topgat_fcm, min_freq = .75, edge_alpha = 1, edge_size = 1, edge_color = "#FFA500")
     })
     # Rede de Palavras sobre as Menções
     # output$MençõesNetwork <- renderVisNetwork({
@@ -677,6 +585,6 @@ server <- function(input, output, session) {
     #         visOptions(highlightNearest = FALSE) %>%
     #         visInteraction(navigationButtons = TRUE)
     # })
-
+    
 }
 
