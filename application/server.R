@@ -103,7 +103,7 @@ server <- function(input, output, session) {
                    remove_url = TRUE,
                    remove_separators = TRUE,
                    split_hyphens = TRUE) %>%
-            tokens_remove(c(STOP_TWITTER, STOP, EMOJI, phrase(input$tema),"#*", "@*")) %>%
+            tokens_remove(c(STOP_TWITTER, STOP, EMOJI, phrase(input$tema),"#*", "@*","Jair","Covid")) %>%
             dfm(tolower = TRUE) %>%
             dfm_group(text()$user_id)
         features_dfm <- textstat_frequency(df, n = 1000)
@@ -132,7 +132,7 @@ server <- function(input, output, session) {
                    remove_url = TRUE,
                    remove_separators = TRUE,
                    split_hyphens = TRUE) %>%
-            tokens_remove(c(STOP_TWITTER, STOP, EMOJI, phrase(input$tema), "#*", "@*")) %>%
+            tokens_remove(c(STOP_TWITTER, STOP, EMOJI, phrase(input$tema), "#*", "@*","Jair","Covid")) %>%
             dfm(tolower = TRUE) %>%
             dfm_group(text()$user_id)
         features_dfm <- textstat_frequency(df, n = 15)
@@ -212,7 +212,7 @@ server <- function(input, output, session) {
                    remove_url = TRUE,
                    remove_separators = TRUE,
                    split_hyphens = TRUE) %>%
-            tokens_remove(c(STOP_TWITTER, STOP, EMOJI, phrase(input$tema), "#*", "@*")) %>%
+            tokens_remove(c(STOP_TWITTER, STOP, EMOJI, phrase(input$tema), "#*", "@*","Jair","Covid")) %>%
             dfm(tolower = TRUE) %>%
             dfm_group(text()$user_id)
         # Identifica as maiores frequencias
