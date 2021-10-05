@@ -360,6 +360,7 @@ server <- function(input, output, session) {
     features_dfm <- textstat_frequency(df, n = 15)
     # Gráfico
     features_dfm %>%
+      arrange(frequency) %>%
       e_charts(feature) %>%
       e_bar(frequency, name = "Frequência") %>%
       e_tooltip() %>%
@@ -483,6 +484,7 @@ server <- function(input, output, session) {
     features_dfm <- textstat_frequency(df, n = 15)
     # Gráfico
     features_dfm %>%
+      arrange(frequency) %>%
       e_charts(feature) %>%
       e_bar(frequency, name = "Frequência") %>%
       e_tooltip() %>%
