@@ -63,6 +63,14 @@ server <- function(input, output, session) {
   # Dados do Twitter sobre o Estado de São Paulo
   tweets_SP <- fromJSON("https://raw.githubusercontent.com/mppallante/NLPTwitter-BR/master/json/tweets_SP.json")
   
+  # ROMULO
+  # Dados do Twitter sobre ESG
+  tweets_ESG <- fromJSON("https://raw.githubusercontent.com/mppallante/NLPTwitter-BR/master/json/tweets_ESG.json")
+  # Dados do Twitter sobre ASG
+  tweets_ASG <- fromJSON("https://raw.githubusercontent.com/mppallante/NLPTwitter-BR/master/json/tweets_ASG.json")
+  # Dados do Twitter sobre Sustentabilidade
+  tweets_Sust <- fromJSON("https://raw.githubusercontent.com/mppallante/NLPTwitter-BR/master/json/tweets_Sustentabilidade.json")
+  
   ##### Controle de Filtro #####
   
   text <- reactive({
@@ -78,6 +86,15 @@ server <- function(input, output, session) {
                    },
                    "São Paulo"={
                      tweets_SP    
+                   },
+                   "ESG"={
+                     tweets_ESG    
+                   },
+                   "ASG"={
+                     tweets_ASG    
+                   },
+                   "Sustentabilidade"={
+                     tweets_Sust    
                    },
                    {
                      print('Erro Interno!')

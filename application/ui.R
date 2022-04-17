@@ -164,7 +164,7 @@ ui = bs4DashPage(
           # Filtro 
           pickerInput(inputId = "tema", 
                       label = "Assuntos:", 
-                      choices = c("Brasil","COVID-19","Bolsonaro","São Paulo"), 
+                      choices = c("Brasil","COVID-19","Bolsonaro","São Paulo","ESG","ASG","Sustentabilidade"), 
                       width = "100%", 
                       inline = F)
         ),
