@@ -47,7 +47,7 @@ ui = bs4DashPage(
     skin = "light",
     status = "white",
     sidebarIcon = shiny::icon("bars"),
-    controlbarIcon = shiny::icon("th"),
+    controlbarIcon = shiny::icon("bars"),
     # Cabeçalho do Dashboard
     title = dashboardBrand(
       title = "©MPPallante",
@@ -68,7 +68,7 @@ ui = bs4DashPage(
           from = HTML("<strong>Desenvolvedor</strong>"),
           message = HTML("Atualização realizada!"),
           image = "https://lh3.googleusercontent.com/ogw/ADGmqu_hZZbh1ioBDSRRb8W85PrmMbB07wcshDOJcM8V9g=s83-c-mo",
-          time = "21/07/2021",
+          time = "30/08/2022",
           color = "navy",
           icon = shiny::icon("code")
         )
@@ -147,7 +147,7 @@ ui = bs4DashPage(
     bs4TabItems(
       # Página 1 - Análise de tweets
       bs4TabItem(
-        use_waiter(),
+        useWaiter(),
         tabName = "tweets_twitter",
         # Filtro
         bs4Card(
@@ -161,12 +161,18 @@ ui = bs4DashPage(
           width = 12,
           height = "auto",
           status = "navy",
-          # Filtro 
+          # Filtro de Temas
           pickerInput(inputId = "tema", 
                       label = "Assuntos:", 
-                      choices = c("Brasil","COVID-19","Bolsonaro","São Paulo","ESG","ASG","Sustentabilidade"), 
+                      choices = c("Brasil","COVID-19","Bolsonaro","São Paulo"), 
                       width = "100%", 
-                      inline = F)
+                      inline = F),
+          materialSwitch(
+            inputId = "key_remove",
+            label = "Remover Chaves?", 
+            value = TRUE,
+            status = "primary"
+          )
         ),
         # Nuvem de Palavras
         bs4Card(
@@ -227,8 +233,8 @@ ui = bs4DashPage(
             height = 400,
             status = "primary",
             # Gráfico
-            #visNetworkOutput(outputId = "wordsNetwork", width = "100%", height = "100%")
-            plotOutput(outputId = "wordsNetwork", width = "100%", height = "100%")
+            visNetworkOutput(outputId = "wordsNetwork", width = "100%", height = "100%")
+            #plotOutput(outputId = "wordsNetwork", width = "100%", height = "100%")
           )
         ),
         # Análise de Sentimentos
@@ -275,8 +281,8 @@ ui = bs4DashPage(
             height = 400,
             status = "purple",
             # Gráfico
-            #visNetworkOutput(outputId = "tagsNetwork", width = "100%", height = "100%")
-            plotOutput(outputId = "tagsNetwork", width = "100%", height = "100%")
+            visNetworkOutput(outputId = "tagsNetwork", width = "100%", height = "100%")
+            #plotOutput(outputId = "tagsNetwork", width = "100%", height = "100%")
           )
         ),
         fluidRow(
@@ -308,8 +314,8 @@ ui = bs4DashPage(
             height = 400,
             status = "purple",
             # Gráfico
-            #visNetworkOutput(outputId = "MençõesNetwork", width = "100%", height = "100%")
-            plotOutput(outputId = "MençõesNetwork", width = "100%", height = "100%")
+            visNetworkOutput(outputId = "MençõesNetwork", width = "100%", height = "100%")
+            #plotOutput(outputId = "MençõesNetwork", width = "100%", height = "100%")
           )
         )
       ),
