@@ -62,7 +62,7 @@ server <- function(input, output, session) {
   tweets_Bolsonaro <- fromJSON("https://raw.githubusercontent.com/mppallante/NLPTwitter-BR/master/json/tweets_Bolsonaro.json")
   # Dados do Twitter sobre o Estado de São Paulo
   tweets_SP <- fromJSON("https://raw.githubusercontent.com/mppallante/NLPTwitter-BR/master/json/tweets_SP.json")
-
+  
   ##### Controle de Filtro #####
   
   text <- reactive({
@@ -255,77 +255,77 @@ server <- function(input, output, session) {
   # })
   # Rede de Palavras
   output$wordsNetwork <- renderVisNetwork({
-      # Carregamento
-      w$show()
-      # StopWords
-      #STOP_TWITTER <- stopwordslangs$word[which(stopwordslangs$lang == "pt")]
-      #EMOJI <- emojis$code
-      STOP <- c(stopwords(language = "pt", source = "stopwords-iso"), STOP(), "RT", "#*", "@*")
-      # Tokens & DFM
-      df <- text()$full_text %>%
-          tokens(remove_punct = TRUE,
-                 remove_symbols = TRUE,
-                 remove_numbers = TRUE,
-                 remove_url = TRUE,
-                 remove_separators = TRUE,
-                 split_hyphens = TRUE) %>%
-          tokens_remove(STOP) %>%
-          dfm(tolower = TRUE) %>%
-          dfm_group(text()$id_str)
-      # Identifica as maiores frequencias
-      toptag <- names(topfeatures(df, 30))
-      tag_fcm <- fcm(df)
-      topgat_fcm <- fcm_select(tag_fcm, pattern = toptag)
-      # Transforma em objeto igraph
-      tn <- as.igraph(topgat_fcm, min_freq = 2, omit_isolated = FALSE)
-      wc <- cluster_walktrap(tn)
-      members <- membership(wc)
-      # Transforma em formato compativel com networkD3
-      graph_d3 <- igraph_to_networkD3(tn, group = members)
-      links <- as.data.frame(graph_d3$links)
-      nodes <- as.data.frame(graph_d3$nodes)
-      # Cria o dataframe final com as associações
-      target <- NA
-      source <- NA
-      for (i in 1:length(links$source)) {
-          target[i] <- nodes$name[[links$target[i]]]
-          source[i] <- ifelse(links$source[i] == 0, NA, nodes$name[[links$source[i]]])
-      }
-      graph_df = data.frame(
-          source = source,
-          target = target
-      )
-      graph_df <- graph_df %>%
-          group_by(source, target) %>%
-          summarise(freq = n()) %>%
-          na.omit()
-      nodes <- graph_df %>%
-          group_by(id = source, label = source) %>%
-          summarise(value = n()) %>%
-          select(id, label) %>%
-          as.data.frame()
-      edges <- graph_df %>%
-          group_by(from = source, to = target) %>%
-          summarise(width = sum(freq)) %>%
-          mutate(width = formattable::normalize(width, min = 0, max = 10)) %>%
-          as.data.frame()
-      # Create graph for Louvain
-      graph <- graph_from_data_frame(edges, directed = FALSE)
-      # Louvain Comunity Detection
-      cluster <- cluster_louvain(graph)
-      cluster_df <- data.frame(as.list(membership(cluster)))
-      cluster_df <- as.data.frame(t(cluster_df))
-      cluster_df$label <- rownames(cluster_df)
-      # Create group column
-      nodes <- left_join(nodes, cluster_df, by = "label")
-      colnames(nodes)[3] <- "group"
-      w$hide()
-      # Gráfico
-      visNetwork(nodes, edges) %>%
-          visEdges(arrows = "to") %>%
-          visOptions(highlightNearest = TRUE, nodesIdSelection = TRUE, autoResize = TRUE) %>%
-          visInteraction(navigationButtons = TRUE) %>%
-          visPhysics(solver = "barnesHut")
+    # Carregamento
+    w$show()
+    # StopWords
+    #STOP_TWITTER <- stopwordslangs$word[which(stopwordslangs$lang == "pt")]
+    #EMOJI <- emojis$code
+    STOP <- c(stopwords(language = "pt", source = "stopwords-iso"), STOP(), "RT", "#*", "@*")
+    # Tokens & DFM
+    df <- text()$full_text %>%
+      tokens(remove_punct = TRUE,
+             remove_symbols = TRUE,
+             remove_numbers = TRUE,
+             remove_url = TRUE,
+             remove_separators = TRUE,
+             split_hyphens = TRUE) %>%
+      tokens_remove(STOP) %>%
+      dfm(tolower = TRUE) %>%
+      dfm_group(text()$id_str)
+    # Identifica as maiores frequencias
+    toptag <- names(topfeatures(df, 30))
+    tag_fcm <- fcm(df)
+    topgat_fcm <- fcm_select(tag_fcm, pattern = toptag)
+    # Transforma em objeto igraph
+    tn <- as.igraph(topgat_fcm, min_freq = 2, omit_isolated = FALSE)
+    wc <- cluster_walktrap(tn)
+    members <- membership(wc)
+    # Transforma em formato compativel com networkD3
+    graph_d3 <- igraph_to_networkD3(tn, group = members)
+    links <- as.data.frame(graph_d3$links)
+    nodes <- as.data.frame(graph_d3$nodes)
+    # Cria o dataframe final com as associações
+    target <- NA
+    source <- NA
+    for (i in 1:length(links$source)) {
+      target[i] <- nodes$name[[links$target[i]]]
+      source[i] <- ifelse(links$source[i] == 0, NA, nodes$name[[links$source[i]]])
+    }
+    graph_df = data.frame(
+      source = source,
+      target = target
+    )
+    graph_df <- graph_df %>%
+      group_by(source, target) %>%
+      summarise(freq = n()) %>%
+      na.omit()
+    nodes <- graph_df %>%
+      group_by(id = source, label = source) %>%
+      summarise(value = n()) %>%
+      select(id, label) %>%
+      as.data.frame()
+    edges <- graph_df %>%
+      group_by(from = source, to = target) %>%
+      summarise(width = sum(freq)) %>%
+      mutate(width = formattable::normalize(width, min = 0, max = 10)) %>%
+      as.data.frame()
+    # Create graph for Louvain
+    graph <- graph_from_data_frame(edges, directed = FALSE)
+    # Louvain Comunity Detection
+    cluster <- cluster_louvain(graph)
+    cluster_df <- data.frame(as.list(membership(cluster)))
+    cluster_df <- as.data.frame(t(cluster_df))
+    cluster_df$label <- rownames(cluster_df)
+    # Create group column
+    nodes <- left_join(nodes, cluster_df, by = "label")
+    colnames(nodes)[3] <- "group"
+    w$hide()
+    # Gráfico
+    visNetwork(nodes, edges) %>%
+      visEdges(arrows = "to") %>%
+      visOptions(highlightNearest = TRUE, nodesIdSelection = TRUE, autoResize = TRUE) %>%
+      visInteraction(navigationButtons = TRUE) %>%
+      visPhysics(solver = "barnesHut")
   })
   # Análise de Sentimentos
   output$feeling <- renderEcharts4r({
@@ -429,74 +429,74 @@ server <- function(input, output, session) {
   # })
   # Rede de Palavras sobre as Tags
   output$tagsNetwork <- renderVisNetwork({
-      # Carregamento
-      w$show()
-      # Tokens & DFM
-      df <- text()$full_text %>%
-          tokens(remove_punct = TRUE,
-                 remove_symbols = TRUE,
-                 remove_numbers = TRUE,
-                 remove_url = TRUE,
-                 remove_separators = TRUE,
-                 split_hyphens = TRUE) %>%
-          #tokens_remove(STOP()) %>%
-          tokens_select(pattern = c("#*")) %>%
-          dfm(tolower = TRUE) %>%
-          dfm_group(text()$id_str)
-      # Identifica as maiores frequencias
-      toptag <- names(topfeatures(df, 150))
-      tag_fcm <- fcm(df)
-      topgat_fcm <- fcm_select(tag_fcm, pattern = toptag)
-      # Transforma em objeto igraph
-      tn <- as.igraph(topgat_fcm, min_freq = 2, omit_isolated = FALSE)
-      wc <- cluster_walktrap(tn)
-      members <- membership(wc)
-      # Transforma em formato compativel com networkD3
-      graph_d3 <- igraph_to_networkD3(tn, group = members)
-      links <- as.data.frame(graph_d3$links)
-      nodes <- as.data.frame(graph_d3$nodes)
-      # Cria o dataframe final com as associações
-      target <- NA
-      source <- NA
-      for (i in 1:length(links$source)) {
-          target[i] <- nodes$name[[links$target[i]]]
-          source[i] <- ifelse(links$source[i] == 0, NA, nodes$name[[links$source[i]]])
-      }
-      graph_df = data.frame(
-          source = source,
-          target = target
-      )
-      graph_df <- graph_df %>%
-          group_by(source, target) %>%
-          summarise(freq = n()) %>%
-          na.omit()
-      nodes <- graph_df %>%
-          group_by(id = source, label = source) %>%
-          summarise(value = n()) %>%
-          select(id, label) %>%
-          as.data.frame()
-      edges <- graph_df %>%
-          group_by(from = source, to = target) %>%
-          summarise(width = sum(freq)) %>%
-          mutate(width = formattable::normalize(width, min = 0, max = 10)) %>%
-          as.data.frame()
-      # Create graph for Louvain
-      graph <- graph_from_data_frame(edges, directed = FALSE)
-      # Louvain Comunity Detection
-      cluster <- cluster_louvain(graph)
-      cluster_df <- data.frame(as.list(membership(cluster)))
-      cluster_df <- as.data.frame(t(cluster_df))
-      cluster_df$label <- rownames(cluster_df)
-      # Create group column
-      nodes <- left_join(nodes, cluster_df, by = "label")
-      colnames(nodes)[3] <- "group"
-      w$hide()
-      # Gráfico
-      visNetwork(nodes, edges) %>%
-          visEdges(arrows = "to") %>%
-          visOptions(highlightNearest = TRUE, nodesIdSelection = TRUE, autoResize = TRUE) %>%
-          visInteraction(navigationButtons = TRUE) %>%
-          visPhysics(solver = "barnesHut")
+    # Carregamento
+    w$show()
+    # Tokens & DFM
+    df <- text()$full_text %>%
+      tokens(remove_punct = TRUE,
+             remove_symbols = TRUE,
+             remove_numbers = TRUE,
+             remove_url = TRUE,
+             remove_separators = TRUE,
+             split_hyphens = TRUE) %>%
+      #tokens_remove(STOP()) %>%
+      tokens_select(pattern = c("#*")) %>%
+      dfm(tolower = TRUE) %>%
+      dfm_group(text()$id_str)
+    # Identifica as maiores frequencias
+    toptag <- names(topfeatures(df, 150))
+    tag_fcm <- fcm(df)
+    topgat_fcm <- fcm_select(tag_fcm, pattern = toptag)
+    # Transforma em objeto igraph
+    tn <- as.igraph(topgat_fcm, min_freq = 2, omit_isolated = FALSE)
+    wc <- cluster_walktrap(tn)
+    members <- membership(wc)
+    # Transforma em formato compativel com networkD3
+    graph_d3 <- igraph_to_networkD3(tn, group = members)
+    links <- as.data.frame(graph_d3$links)
+    nodes <- as.data.frame(graph_d3$nodes)
+    # Cria o dataframe final com as associações
+    target <- NA
+    source <- NA
+    for (i in 1:length(links$source)) {
+      target[i] <- nodes$name[[links$target[i]]]
+      source[i] <- ifelse(links$source[i] == 0, NA, nodes$name[[links$source[i]]])
+    }
+    graph_df = data.frame(
+      source = source,
+      target = target
+    )
+    graph_df <- graph_df %>%
+      group_by(source, target) %>%
+      summarise(freq = n()) %>%
+      na.omit()
+    nodes <- graph_df %>%
+      group_by(id = source, label = source) %>%
+      summarise(value = n()) %>%
+      select(id, label) %>%
+      as.data.frame()
+    edges <- graph_df %>%
+      group_by(from = source, to = target) %>%
+      summarise(width = sum(freq)) %>%
+      mutate(width = formattable::normalize(width, min = 0, max = 10)) %>%
+      as.data.frame()
+    # Create graph for Louvain
+    graph <- graph_from_data_frame(edges, directed = FALSE)
+    # Louvain Comunity Detection
+    cluster <- cluster_louvain(graph)
+    cluster_df <- data.frame(as.list(membership(cluster)))
+    cluster_df <- as.data.frame(t(cluster_df))
+    cluster_df$label <- rownames(cluster_df)
+    # Create group column
+    nodes <- left_join(nodes, cluster_df, by = "label")
+    colnames(nodes)[3] <- "group"
+    w$hide()
+    # Gráfico
+    visNetwork(nodes, edges) %>%
+      visEdges(arrows = "to") %>%
+      visOptions(highlightNearest = TRUE, nodesIdSelection = TRUE, autoResize = TRUE) %>%
+      visInteraction(navigationButtons = TRUE) %>%
+      visPhysics(solver = "barnesHut")
   })
   
   ##### Análise de Menções #####
@@ -556,77 +556,77 @@ server <- function(input, output, session) {
   # })
   # Rede de Palavras sobre as Menções
   output$MençõesNetwork <- renderVisNetwork({
-      # Carregamento
-      w$show()
-      # Tokens & DFM
-      df <- text()$full_text %>%
-          tokens(remove_punct = TRUE,
-                 remove_symbols = TRUE,
-                 remove_numbers = TRUE,
-                 remove_url = TRUE,
-                 remove_separators = TRUE,
-                 split_hyphens = TRUE) %>%
-          #tokens_remove(STOP()) %>%
-          tokens_select(pattern = c("@*")) %>%
-          dfm(tolower = TRUE) %>%
-          dfm_group(text()$id_str)
-      # Identifica as maiores frequencias
-      toptag <- names(topfeatures(df, 150))
-      tag_fcm <- fcm(df)
-      topgat_fcm <- fcm_select(tag_fcm, pattern = toptag)
-      # Transforma em objeto igraph
-      tn <- as.igraph(topgat_fcm, min_freq = 2, omit_isolated = FALSE)
-      wc <- cluster_walktrap(tn)
-      members <- membership(wc)
-      # Transforma em formato compativel com networkD3
-      graph_d3 <- igraph_to_networkD3(tn, group = members)
-      links <- as.data.frame(graph_d3$links)
-      nodes <- as.data.frame(graph_d3$nodes)
-      # Cria o dataframe final com as associações
-      target <- NA
-      source <- NA
-      clusts <- NA
-      for (i in 1:length(links$source)) {
-          target[i] <- nodes$name[[links$target[i]]]
-          source[i] <- ifelse(links$source[i] == 0, NA, nodes$name[[links$source[i]]])
-          clusts[i] <- ifelse(links$source[i] == 0, NA, nodes$group[[links$source[i]]])
-      }
-      graph_df = data.frame(
-          source = source,
-          target = target,
-          clusts = factor(clusts)
-      )
-      graph_df <- graph_df %>%
-          group_by(source, target, clusts) %>%
-          summarise(freq = n()) %>%
-          na.omit()
-      nodes <- graph_df %>%
-          group_by(id = source, label = source) %>%
-          summarise(value = n()) %>%
-          select(id, label) %>%
-          as.data.frame()
-      edges <- graph_df %>%
-          group_by(from = source, to = target) %>%
-          summarise(width = sum(freq)) %>%
-          mutate(width = formattable::normalize(width, min = 0, max = 10)) %>%
-          as.data.frame()
-      # Create graph for Louvain
-      graph <- graph_from_data_frame(edges, directed = FALSE)
-      # Louvain Comunity Detection
-      cluster <- cluster_louvain(graph)
-      cluster_df <- data.frame(as.list(membership(cluster)))
-      cluster_df <- as.data.frame(t(cluster_df))
-      cluster_df$label <- rownames(cluster_df)
-      # Create group column
-      nodes <- left_join(nodes, cluster_df, by = "label")
-      colnames(nodes)[3] <- "group"
-      w$hide()
-      # Gráfico
-      visNetwork(nodes, edges) %>%
-          visEdges(arrows = "to") %>%
-          visOptions(highlightNearest = TRUE, nodesIdSelection = TRUE, autoResize = TRUE) %>%
-          visInteraction(navigationButtons = TRUE) %>%
-          visPhysics(solver = "barnesHut")
+    # Carregamento
+    w$show()
+    # Tokens & DFM
+    df <- text()$full_text %>%
+      tokens(remove_punct = TRUE,
+             remove_symbols = TRUE,
+             remove_numbers = TRUE,
+             remove_url = TRUE,
+             remove_separators = TRUE,
+             split_hyphens = TRUE) %>%
+      #tokens_remove(STOP()) %>%
+      tokens_select(pattern = c("@*")) %>%
+      dfm(tolower = TRUE) %>%
+      dfm_group(text()$id_str)
+    # Identifica as maiores frequencias
+    toptag <- names(topfeatures(df, 150))
+    tag_fcm <- fcm(df)
+    topgat_fcm <- fcm_select(tag_fcm, pattern = toptag)
+    # Transforma em objeto igraph
+    tn <- as.igraph(topgat_fcm, min_freq = 2, omit_isolated = FALSE)
+    wc <- cluster_walktrap(tn)
+    members <- membership(wc)
+    # Transforma em formato compativel com networkD3
+    graph_d3 <- igraph_to_networkD3(tn, group = members)
+    links <- as.data.frame(graph_d3$links)
+    nodes <- as.data.frame(graph_d3$nodes)
+    # Cria o dataframe final com as associações
+    target <- NA
+    source <- NA
+    clusts <- NA
+    for (i in 1:length(links$source)) {
+      target[i] <- nodes$name[[links$target[i]]]
+      source[i] <- ifelse(links$source[i] == 0, NA, nodes$name[[links$source[i]]])
+      clusts[i] <- ifelse(links$source[i] == 0, NA, nodes$group[[links$source[i]]])
+    }
+    graph_df = data.frame(
+      source = source,
+      target = target,
+      clusts = factor(clusts)
+    )
+    graph_df <- graph_df %>%
+      group_by(source, target, clusts) %>%
+      summarise(freq = n()) %>%
+      na.omit()
+    nodes <- graph_df %>%
+      group_by(id = source, label = source) %>%
+      summarise(value = n()) %>%
+      select(id, label) %>%
+      as.data.frame()
+    edges <- graph_df %>%
+      group_by(from = source, to = target) %>%
+      summarise(width = sum(freq)) %>%
+      mutate(width = formattable::normalize(width, min = 0, max = 10)) %>%
+      as.data.frame()
+    # Create graph for Louvain
+    graph <- graph_from_data_frame(edges, directed = FALSE)
+    # Louvain Comunity Detection
+    cluster <- cluster_louvain(graph)
+    cluster_df <- data.frame(as.list(membership(cluster)))
+    cluster_df <- as.data.frame(t(cluster_df))
+    cluster_df$label <- rownames(cluster_df)
+    # Create group column
+    nodes <- left_join(nodes, cluster_df, by = "label")
+    colnames(nodes)[3] <- "group"
+    w$hide()
+    # Gráfico
+    visNetwork(nodes, edges) %>%
+      visEdges(arrows = "to") %>%
+      visOptions(highlightNearest = TRUE, nodesIdSelection = TRUE, autoResize = TRUE) %>%
+      visInteraction(navigationButtons = TRUE) %>%
+      visPhysics(solver = "barnesHut")
   })
   
 }
