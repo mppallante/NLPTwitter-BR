@@ -56,8 +56,8 @@ server <- function(input, output, session) {
   
   # Dados do Twitter sobre o Brasil
   tweets_Brasil <- fromJSON("https://raw.githubusercontent.com/mppallante/NLPTwitter-BR/master/json/tweets_Brasil.json")
-  # Dados do Twitter sobre a Covid-19 no Brasil
-  tweets_Covid19 <- fromJSON("https://raw.githubusercontent.com/mppallante/NLPTwitter-BR/master/json/tweets_Covid19.json")
+  # Dados do Twitter sobre o Lula
+  tweets_Lula <- fromJSON("https://raw.githubusercontent.com/mppallante/NLPTwitter-BR/master/json/tweets_Lula.json")
   # Dados do Twitter sobre o Bolsonaro
   tweets_Bolsonaro <- fromJSON("https://raw.githubusercontent.com/mppallante/NLPTwitter-BR/master/json/tweets_Bolsonaro.json")
   # Dados do Twitter sobre o Estado de São Paulo
@@ -73,8 +73,8 @@ server <- function(input, output, session) {
                    "Bolsonaro"={
                      tweets_Bolsonaro    
                    },
-                   "COVID-19"={
-                     tweets_Covid19    
+                   "Lula"={
+                     tweets_Lula   
                    },
                    "São Paulo"={
                      tweets_SP    
@@ -93,8 +93,8 @@ server <- function(input, output, session) {
                            "Bolsonaro"={
                              c("Bolsonaro", "Jair", "#bolsonaro", "#Jair", "@jairbolsonaro")    
                            },
-                           "COVID-19"={
-                             c("Covid", "Coronavírus", "#covid")    
+                           "Lula"={
+                             c("Lula", "#Lula", "@LulaOficial", "Luiz Inácio Lula da Silva")    
                            },
                            "São Paulo"={
                              c("São", "Paulo", "SP", "#SP", "@governosp")    
